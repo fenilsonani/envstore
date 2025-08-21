@@ -15,13 +15,13 @@ Securely upload, encrypt, version, and manage `.env` files per project and envir
 1. Install dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 2. Create local env and secrets
 
 ```bash
-npm run setup-env
+pnpm run setup-env
 # Creates .env.local with a secure JWT_SECRET
 ```
 
@@ -38,14 +38,14 @@ TURSO_AUTH_TOKEN="..."
 Generate and push schema
 
 ```bash
-npm run db:generate
-npm run db:push
+pnpm run db:generate
+pnpm run db:push
 ```
 
 4. Start the dev server
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Visit `http://localhost:3000`.
@@ -93,8 +93,8 @@ Visit `http://localhost:3000`.
 ## Development
 
 ```bash
-npm run typecheck
-npm run lint
+pnpm run typecheck
+pnpm run lint
 ```
 
 ### Maintenance tips
@@ -111,6 +111,6 @@ npx knip --reporter compact
 Build and run
 
 ```bash
-npm run build
-npm run start
+pnpm run build
+pnpm run start
 ```
