@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { createMocks } from 'node-mocks-http';
+import { describe, it, expect, beforeAll } from 'vitest';
 
 describe('API Integration Tests', () => {
     const BASE_URL = process.env.TEST_URL || 'http://localhost:3000';

@@ -37,7 +37,7 @@ process.env.TURSO_DATABASE_URL = 'libsql://test.turso.io';
 process.env.TURSO_AUTH_TOKEN = 'test-token';
 
 // Import and setup fetch mock
-import { setupFetchMock, resetMockState } from './mocks/fetch';
+import { setupFetchMock } from './mocks/fetch';
 
 // Setup fetch mock with route-specific handling
 setupFetchMock();
@@ -47,12 +47,14 @@ setupFetchMock();
 
 // Mock crypto for Node.js environment
 if (typeof window === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { webcrypto } = require('crypto');
     global.crypto = webcrypto;
 }
 
 // Add TextEncoder/TextDecoder for Node.js
 if (typeof TextEncoder === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { TextEncoder, TextDecoder } = require('util');
     global.TextEncoder = TextEncoder;
     global.TextDecoder = TextDecoder;

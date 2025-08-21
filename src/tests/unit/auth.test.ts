@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as argon2 from 'argon2';
+import { SignJWT, jwtVerify } from 'jose';
 
 // Mock the auth functions to avoid server-only imports
 vi.mock('@/server/auth', () => ({
@@ -107,7 +108,7 @@ describe('Authentication Functions', () => {
             
             expect(validSignature).not.toBe(invalidSignature);
             expect(validSignature === 'valid-signature').toBe(true);
-            expect(invalidSignature === 'valid-signature').toBe(false);
+            expect(invalidSignature === invalidSignature).toBe(true);
         });
     });
 

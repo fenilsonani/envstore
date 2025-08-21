@@ -108,7 +108,7 @@ describe('Authentication Pages', () => {
         it('should have link to signup page', () => {
             const LoginFooter = () => (
                 <div>
-                    <p>Don't have an account?</p>
+                    <p>Don&apos;t have an account?</p>
                     <a href="/signup">Sign up</a>
                 </div>
             );

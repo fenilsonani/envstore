@@ -8,7 +8,7 @@ class ErrorBoundary extends React.Component<
     { children: React.ReactNode },
     { hasError: boolean }
 > {
-    constructor(props: any) {
+    constructor(props: { children: React.ReactNode }) {
         super(props);
         this.state = { hasError: false };
     }
@@ -70,8 +70,6 @@ describe('ErrorBoundary Component', () => {
     });
 
     it('should display error message in development', () => {
-        const testError = 'Custom test error';
-        
         render(
             <ErrorBoundary>
                 <ThrowError shouldThrow={true} />

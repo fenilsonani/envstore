@@ -22,7 +22,7 @@ function simpleEncrypt(text: string, passphrase: string) {
     };
 }
 
-function simpleDecrypt(encryptedData: any, passphrase: string) {
+function simpleDecrypt(encryptedData: { ciphertext: string; salt: string; iv: string; authTag: string }, passphrase: string) {
     const algorithm = 'aes-256-gcm';
     const salt = Buffer.from(encryptedData.salt, 'hex');
     const key = crypto.pbkdf2Sync(passphrase, salt, 100000, 32, 'sha256');

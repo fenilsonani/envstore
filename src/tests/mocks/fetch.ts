@@ -4,7 +4,7 @@ interface MockResponse {
     ok: boolean;
     status: number;
     statusText: string;
-    json: () => Promise<any>;
+    json: () => Promise<unknown>;
     text: () => Promise<string>;
     headers: {
         get: (key: string) => string | null;
@@ -12,19 +12,19 @@ interface MockResponse {
 }
 
 export function setupFetchMock() {
-    const mockFetch = vi.fn().mockImplementation(async (url: string, options?: any): Promise<MockResponse> => {
-        const method = options?.method || 'GET';
+    const mockFetch = vi.fn().mockImplementation(async (url: string, options?: Record<string, unknown>): Promise<MockResponse> => {
+        // const method = options?.method || 'GET';
         let body = null;
         try {
-            body = options?.body ? JSON.parse(options.body) : null;
+            body = options?.body ? JSON.parse(options.body as string) : null;
         } catch {
             // Handle invalid JSON
             body = null;
         }
-        const headers = options?.headers || {};
+        const headers = (options?.headers as Record<string, string>) || {};
         
         // Helper to create response
-        const createResponse = (status: number, data: any, ok = status < 400): MockResponse => ({
+        const createResponse = (status: number, data: unknown, ok = status < 400): MockResponse => ({
             ok,
             status,
             statusText: status === 200 ? 'OK' : status === 401 ? 'Unauthorized' : status === 400 ? 'Bad Request' : 'Error',
@@ -107,7 +107,7 @@ export function setupFetchMock() {
         
         // API v1 endpoints
         if (url.includes('/api/v1/kv/health')) {
-            const apiKey = headers['x-api-key'];
+            const apiKey = (headers as Record<string, string>)['x-api-key'];
             if (!apiKey) {
                 return createResponse(401, { error: 'Unauthorized' });
             }
@@ -118,7 +118,7 @@ export function setupFetchMock() {
         }
         
         if (url.includes('/api/v1/env/upload')) {
-            const apiKey = headers['x-api-key'];
+            const apiKey = (headers as Record<string, string>)['x-api-key'];
             if (!apiKey) {
                 return createResponse(401, { error: 'Unauthorized' });
             }
@@ -133,7 +133,7 @@ export function setupFetchMock() {
         }
         
         if (url.includes('/api/v1/env/latest')) {
-            const apiKey = headers['x-api-key'];
+            const apiKey = (headers as Record<string, string>)['x-api-key'];
             if (!apiKey) {
                 return createResponse(401, { error: 'Unauthorized' });
             }

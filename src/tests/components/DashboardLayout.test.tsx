@@ -30,7 +30,7 @@ vi.mock('next/navigation', () => ({
 
 // Mock next/link
 vi.mock('next/link', () => ({
-    default: ({ children, href }: any) => <a href={href}>{children}</a>
+    default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>
 }));
 
 describe('DashboardLayout Component', () => {
@@ -120,12 +120,7 @@ describe('DashboardLayout Component', () => {
     });
 
     it('should handle navigation clicks', () => {
-        const mockPush = vi.fn();
-        vi.mocked(useRouter).mockReturnValue({
-            push: mockPush,
-            replace: vi.fn(),
-            refresh: vi.fn(),
-        });
+        // Note: useRouter is mocked at module level
         
         render(
             <DashboardLayout>

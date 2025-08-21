@@ -1,10 +1,18 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
+// Project type for tests
+type MockProject = {
+    id: string;
+    name: string;
+    environmentsCount: number;
+    lastActivity: number;
+};
+
 describe('Projects Page', () => {
-    const mockProjects = [
+    const mockProjects: MockProject[] = [
         { id: '1', name: 'Project Alpha', environmentsCount: 3, lastActivity: Date.now() },
         { id: '2', name: 'Project Beta', environmentsCount: 2, lastActivity: Date.now() - 86400000 },
         { id: '3', name: 'Project Gamma', environmentsCount: 5, lastActivity: Date.now() - 172800000 },
@@ -88,7 +96,7 @@ describe('Projects Page', () => {
     });
 
     it('should have edit and delete buttons for each project', () => {
-        const ProjectCard = ({ project }: any) => (
+        const ProjectCard = ({ project }: { project: MockProject }) => (
             <div>
                 <h3>{project.name}</h3>
                 <button aria-label={`Edit ${project.name}`}>Edit</button>
@@ -180,7 +188,7 @@ describe('Projects Page', () => {
     it('should navigate to environments page on project click', () => {
         const mockPush = vi.fn();
         
-        const ProjectLink = ({ project }: any) => (
+        const ProjectLink = ({ project }: { project: MockProject }) => (
             <div 
                 onClick={() => mockPush(`/dashboard/environments?project=${project.id}`)}
                 role="link"
@@ -206,7 +214,7 @@ describe('Projects Page', () => {
             return `${Math.floor(diff / 86400000)} days ago`;
         };
         
-        const ProjectActivity = ({ project }: any) => (
+        const ProjectActivity = ({ project }: { project: MockProject }) => (
             <div>
                 <h3>{project.name}</h3>
                 <span>Last activity: {formatTime(project.lastActivity)}</span>

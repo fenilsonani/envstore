@@ -1,12 +1,12 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { CodeBlock } from '@/components/CodeBlock';
+import CodeBlock from '@/components/CodeBlock';
 import '@testing-library/jest-dom';
 
 // Mock react-syntax-highlighter
 vi.mock('react-syntax-highlighter', () => ({
-    Prism: ({ children, ...props }: any) => (
+    Prism: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
         <pre data-testid="syntax-highlighter" {...props}>
             <code>{children}</code>
         </pre>
@@ -21,7 +21,7 @@ vi.mock('react-syntax-highlighter/dist/esm/styles/prism', () => ({
 describe('CodeBlock Component', () => {
     const defaultProps = {
         code: 'const hello = "world";',
-        language: 'javascript',
+        language: 'javascript' as const,
     };
 
     it('should render code content', () => {
@@ -101,7 +101,7 @@ describe('CodeBlock Component', () => {
     });
 
     it('should support different languages', () => {
-        const languages = ['typescript', 'python', 'bash', 'json'];
+        const languages = ['typescript', 'javascript', 'bash', 'json'] as const;
         
         languages.forEach(lang => {
             const { unmount } = render(
@@ -123,7 +123,7 @@ describe('CodeBlock Component', () => {
     it('should handle special characters in code', () => {
         const specialCode = '<div>{"test": "value"}</div>';
         
-        render(<CodeBlock code={specialCode} language="jsx" />);
+        render(<CodeBlock code={specialCode} language="javascript" />);
         
         expect(screen.getByText(specialCode)).toBeInTheDocument();
     });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 // Mock tRPC
@@ -92,8 +92,8 @@ describe('Dashboard Page', () => {
             <div>
                 <h2>Recent Activity</h2>
                 <ul>
-                    <li>Project "App1" created</li>
-                    <li>Environment "production" uploaded</li>
+                    <li>Project &quot;App1&quot; created</li>
+                    <li>Environment &quot;production&quot; uploaded</li>
                     <li>API key generated</li>
                 </ul>
             </div>

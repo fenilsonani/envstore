@@ -126,6 +126,9 @@ describe('Performance Tests', () => {
                 }
             );
             
+            // Response object available for validation
+            expect(response).toBeDefined();
+            
             const end = performance.now();
             const queryTime = end - start;
             

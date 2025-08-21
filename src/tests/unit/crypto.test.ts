@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { encryptString, decryptString } from '@/server/crypto';
 
 describe.skip('Crypto Functions (WebCrypto - Skipped in Node)', () => {
