@@ -1,8 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { trpc } from '../../providers';
 import ClientOnly from '@/components/ClientOnly';
-import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,15 +37,49 @@ export default function ProjectsPage() {
         onSuccess: () => projects.refetch(),
     });
 
-    const handleCreateProject = async () => {
+    const handleCreateProject = useCallback(async () => {
         if (!projectName.trim()) return;
         await createProject.mutateAsync({ name: projectName.trim() });
-    };
+    }, [projectName, createProject]);
+
+    const handleSetIsCreating = useCallback((value: boolean) => {
+        setIsCreating(value);
+    }, []);
+
+    const handleCancelCreate = useCallback(() => {
+        setIsCreating(false);
+        setProjectName('');
+    }, []);
+
+    const handleRenameProject = useCallback((id: string, name: string) => {
+        renameProject.mutate({ id, name });
+    }, [renameProject]);
+
+    const handleDeleteProject = useCallback((id: string) => {
+        deleteProject.mutate({ id });
+    }, [deleteProject]);
+
+    const handleProjectNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setProjectName(e.target.value);
+    }, []);
+
+    const handleProjectNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleCreateProject();
+        }
+    }, [handleCreateProject]);
+
+    const projectList = useMemo(() => {
+        if (!projects.data) return [];
+        return projects.data.map((project) => ({
+            ...project,
+            createdAt: new Date(project.createdAt),
+        }));
+    }, [projects.data]);
 
     return (
         <ClientOnly>
-            <DashboardLayout>
-                <div className="space-y-6">
+            <div className="space-y-6">
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
@@ -57,7 +90,7 @@ export default function ProjectsPage() {
                                 Organize your environment files by project
                             </p>
                         </div>
-                        <Button onClick={() => setIsCreating(true)}>
+                        <Button onClick={() => handleSetIsCreating(true)}>
                             <Plus className="h-4 w-4 mr-2" />
                             New Project
                         </Button>
@@ -78,13 +111,8 @@ export default function ProjectsPage() {
                                         id="project-name"
                                         placeholder="Enter project name"
                                         value={projectName}
-                                        onChange={(e) =>
-                                            setProjectName(e.target.value)
-                                        }
-                                        onKeyDown={(e) =>
-                                            e.key === 'Enter' &&
-                                            handleCreateProject()
-                                        }
+                                        onChange={handleProjectNameChange}
+                                        onKeyDown={handleProjectNameKeyDown}
                                     />
                                 </div>
                                 <div className="flex gap-2">
@@ -101,10 +129,7 @@ export default function ProjectsPage() {
                                     </Button>
                                     <Button
                                         variant="outline"
-                                        onClick={() => {
-                                            setIsCreating(false);
-                                            setProjectName('');
-                                        }}
+                                        onClick={handleCancelCreate}
                                     >
                                         Cancel
                                     </Button>
@@ -124,21 +149,14 @@ export default function ProjectsPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                    ) : projects.data && projects.data.length > 0 ? (
+                    ) : projectList.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {projects.data.map((project) => (
+                            {projectList.map((project) => (
                                 <ProjectCard
                                     key={project.id}
-                                    project={{
-                                        ...project,
-                                        createdAt: new Date(project.createdAt),
-                                    }}
-                                    onRename={(id, name) =>
-                                        renameProject.mutate({ id, name })
-                                    }
-                                    onDelete={(id) =>
-                                        deleteProject.mutate({ id })
-                                    }
+                                    project={project}
+                                    onRename={handleRenameProject}
+                                    onDelete={handleDeleteProject}
                                     isDeleting={deleteProject.isPending}
                                     isRenaming={renameProject.isPending}
                                 />
@@ -155,20 +173,19 @@ export default function ProjectsPage() {
                                     Create your first project to start
                                     organizing your environment files
                                 </p>
-                                <Button onClick={() => setIsCreating(true)}>
+                                <Button onClick={() => handleSetIsCreating(true)}>
                                     <Plus className="h-4 w-4 mr-2" />
                                     Create Your First Project
                                 </Button>
                             </CardContent>
                         </Card>
                     )}
-                </div>
-            </DashboardLayout>
+            </div>
         </ClientOnly>
     );
 }
 
-function ProjectCard({
+const ProjectCard = memo(function ProjectCard({
     project,
     onRename,
     onDelete,
@@ -191,6 +208,45 @@ function ProjectCard({
     const [renameOpen, setRenameOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [newName, setNewName] = useState(project.name);
+
+    const handleRenameClick = useCallback(() => {
+        setNewName(project.name);
+        setRenameOpen(true);
+    }, [project.name]);
+
+    const handleDeleteClick = useCallback(() => {
+        setDeleteOpen(true);
+    }, []);
+
+    const handleRenameSubmit = useCallback(() => {
+        const n = newName.trim();
+        if (n) {
+            onRename(project.id, n);
+            setRenameOpen(false);
+        }
+    }, [newName, onRename, project.id]);
+
+    const handleRenameCancel = useCallback(() => {
+        setRenameOpen(false);
+    }, []);
+
+    const handleDeleteSubmit = useCallback(() => {
+        onDelete(project.id);
+        setDeleteOpen(false);
+    }, [onDelete, project.id]);
+
+    const handleDeleteCancel = useCallback(() => {
+        setDeleteOpen(false);
+    }, []);
+
+    const handleNewNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setNewName(e.target.value);
+    }, []);
+
+    const handleRenameOpenChange = useCallback((o: boolean) => {
+        setRenameOpen(o);
+        if (!o) setNewName(project.name);
+    }, [project.name]);
 
     return (
         <Card className="hover:shadow-md transition-shadow">
@@ -216,10 +272,7 @@ function ProjectCard({
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                                setNewName(project.name);
-                                setRenameOpen(true);
-                            }}
+                            onClick={handleRenameClick}
                         >
                             <Edit className="h-4 w-4" />
                         </Button>
@@ -228,16 +281,13 @@ function ProjectCard({
                             size="sm"
                             className="text-destructive hover:text-destructive"
                             disabled={isDeleting}
-                            onClick={() => setDeleteOpen(true)}
+                            onClick={handleDeleteClick}
                         >
                             <Trash2 className="h-4 w-4" />
                         </Button>
                         <Sheet
                             open={renameOpen}
-                            onOpenChange={(o) => {
-                                setRenameOpen(o);
-                                if (!o) setNewName(project.name);
-                            }}
+                            onOpenChange={handleRenameOpenChange}
                         >
                             <SheetContent
                                 side="right"
@@ -257,26 +307,18 @@ function ProjectCard({
                                     <Input
                                         id={`rename-${project.id}`}
                                         value={newName}
-                                        onChange={(e) =>
-                                            setNewName(e.target.value)
-                                        }
+                                        onChange={handleNewNameChange}
                                     />
                                 </div>
                                 <SheetFooter className="p-4">
                                     <Button
                                         variant="outline"
-                                        onClick={() => setRenameOpen(false)}
+                                        onClick={handleRenameCancel}
                                     >
                                         Cancel
                                     </Button>
                                     <Button
-                                        onClick={() => {
-                                            const n = newName.trim();
-                                            if (n) {
-                                                onRename(project.id, n);
-                                                setRenameOpen(false);
-                                            }
-                                        }}
+                                        onClick={handleRenameSubmit}
                                         disabled={isRenaming || !newName.trim()}
                                     >
                                         Save
@@ -300,16 +342,13 @@ function ProjectCard({
                                 <SheetFooter className="p-4">
                                     <Button
                                         variant="outline"
-                                        onClick={() => setDeleteOpen(false)}
+                                        onClick={handleDeleteCancel}
                                     >
                                         Cancel
                                     </Button>
                                     <Button
                                         variant="destructive"
-                                        onClick={() => {
-                                            onDelete(project.id);
-                                            setDeleteOpen(false);
-                                        }}
+                                        onClick={handleDeleteSubmit}
                                         disabled={isDeleting}
                                     >
                                         Delete
@@ -344,37 +383,16 @@ function ProjectCard({
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2">
-                    <Link
-                        href={`/dashboard/environments?project=${project.id}`}
-                        className="flex-1"
-                    >
-                        <Button variant="outline" size="sm" className="w-full">
-                            <Server className="h-4 w-4 mr-2" />
-                            Environments
-                        </Button>
-                    </Link>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                            setNewName(project.name);
-                            setRenameOpen(true);
-                        }}
-                    >
-                        <Edit className="h-4 w-4" />
+                <Link
+                    href={`/dashboard/environments?project=${project.id}`}
+                    className="w-full"
+                >
+                    <Button variant="outline" size="sm" className="w-full">
+                        <Server className="h-4 w-4 mr-2" />
+                        View Environments
                     </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        disabled={isDeleting}
-                        onClick={() => setDeleteOpen(true)}
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
+                </Link>
             </CardContent>
         </Card>
     );
-}
+});

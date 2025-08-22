@@ -39,6 +39,7 @@ function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {
     );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function TableFooter({ className, ...props }: React.ComponentProps<'tfoot'>) {
     return (
         <tfoot
@@ -91,6 +92,7 @@ function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
     );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function TableCaption({
     className,
     ...props

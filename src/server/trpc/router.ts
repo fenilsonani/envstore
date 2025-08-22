@@ -85,37 +85,20 @@ export const appRouter = t.router({
                 name: projects.name,
                 createdAt: projects.createdAt,
                 environmentsCount:
-                    sql`count(distinct ${envFiles.environment})`.as(
-                        'environmentsCount'
-                    ),
-                lastActivity: sql`max(${envFiles.createdAt})`.as(
-                    'lastActivity'
-                ),
+                    sql<string>`count(distinct ${envFiles.environment})`,
+                lastActivity: sql<number | null>`max(${envFiles.createdAt})`,
             })
             .from(projects)
             .leftJoin(envFiles, eq(envFiles.projectId, projects.id))
             .where(eq(projects.ownerId, ctx.userId!))
             .groupBy(projects.id);
-        return rows.map((r) => {
-            const environmentsCount = (r as { environmentsCount?: unknown })
-                .environmentsCount;
-            const lastActivity = (r as { lastActivity?: unknown }).lastActivity;
-            return {
-                id: r.id,
-                name: r.name,
-                createdAt: r.createdAt,
-                environmentsCount:
-                    typeof environmentsCount === 'number'
-                        ? environmentsCount
-                        : Number(environmentsCount ?? 0),
-                lastActivity:
-                    typeof lastActivity === 'number'
-                        ? lastActivity
-                        : lastActivity != null
-                          ? Number(lastActivity)
-                          : null,
-            };
-        });
+        return rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            createdAt: r.createdAt,
+            environmentsCount: parseInt(r.environmentsCount, 10),
+            lastActivity: r.lastActivity,
+        }));
     }),
 
     uploadEnv: protectedProcedure

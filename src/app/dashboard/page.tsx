@@ -2,7 +2,6 @@
 import React, { useMemo } from 'react';
 import { trpc } from '../providers';
 import ClientOnly from '@/components/ClientOnly';
-import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -116,8 +115,7 @@ export default function DashboardOverview() {
 
     return (
         <ClientOnly>
-            <DashboardLayout>
-                <div className="space-y-6">
+            <div className="space-y-6">
                     {/* Header */}
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">
@@ -426,8 +424,7 @@ export default function DashboardOverview() {
                             </CardContent>
                         </Card>
                     </div>
-                </div>
-            </DashboardLayout>
+            </div>
         </ClientOnly>
     );
 }

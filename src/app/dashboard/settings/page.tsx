@@ -1,6 +1,5 @@
 'use client';
 import ClientOnly from '@/components/ClientOnly';
-import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -107,8 +106,7 @@ export default function SettingsPage() {
 
     return (
         <ClientOnly>
-            <DashboardLayout>
-                <div className="space-y-6">
+            <div className="space-y-6">
                     {/* Header */}
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">
@@ -693,8 +691,7 @@ export default function SettingsPage() {
                             </Card>
                         </div>
                     </div>
-                </div>
-            </DashboardLayout>
+            </div>
         </ClientOnly>
     );
 }
