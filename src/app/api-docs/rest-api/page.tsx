@@ -43,7 +43,7 @@ const endpoints = [
     title: 'Get Latest Environment',
     description: 'Retrieve the latest version of an environment file',
     auth: 'API Key Required',
-    rateLimit: '30/min (pre-auth), 120/min (post-auth)',
+    rateLimit: '60/min (pre-auth), 120/min (post-auth)',
     icon: Download,
     color: 'purple'
   }
