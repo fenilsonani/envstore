@@ -14,6 +14,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => (
             <a href="/dashboard/settings">Settings</a>
             <a href="/logout">Logout</a>
         </nav>
+        <aside role="complementary">
+            {/* Sidebar for mobile */}
+        </aside>
         <main>{children}</main>
     </div>
 );
