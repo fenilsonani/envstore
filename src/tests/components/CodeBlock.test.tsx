@@ -7,7 +7,7 @@ import '@testing-library/jest-dom';
 // Mock react-syntax-highlighter
 vi.mock('react-syntax-highlighter', () => ({
     Prism: ({ children, language, ...props }: { children: React.ReactNode; language?: string; [key: string]: unknown }) => (
-        <pre data-testid="syntax-highlighter" language={language} {...props}>
+        <pre data-testid="syntax-highlighter" data-language={language} {...props}>
             <code>{children}</code>
         </pre>
     ),
@@ -41,7 +41,7 @@ describe('CodeBlock Component', () => {
         const highlighter = screen.getByTestId('syntax-highlighter');
         expect(highlighter).toBeInTheDocument();
         // Language prop is mapped - 'javascript' input becomes 'typescript' due to default mapping
-        expect(highlighter.getAttribute('language')).toBe('typescript');
+        expect(highlighter.getAttribute('data-language')).toBe('typescript');
     });
 
     it('should render the syntax highlighter', () => {
