@@ -1,12 +1,27 @@
-import { kvGetJSON, kvPutJSON } from './kv';
+import { kvGetJSON, kvPutJSON, kvRemember } from './kv';
 
 type RateState = { count: number; resetAtMs: number };
+
+// Sliding window rate limit state
+type SlidingWindowState = {
+    requests: Array<{ timestamp: number; weight?: number }>;
+    windowStart: number;
+};
 
 export type RateResult = {
     success: boolean;
     remaining: number;
     retryAfterMs: number;
     resetAt: number;
+};
+
+// Configuration for rate limiting
+export type RateLimitConfig = {
+    limit: number;
+    windowMs: number;
+    useSlidingWindow?: boolean;
+    enableBurst?: boolean;
+    burstLimit?: number;
 };
 
 async function incrementWindow(
@@ -55,12 +70,94 @@ async function incrementWindow(
     };
 }
 
+// Sliding window rate limiting for more accurate rate control
+async function incrementSlidingWindow(
+    key: string,
+    limit: number,
+    windowMs: number,
+    weight = 1
+): Promise<RateResult> {
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    
+    const state = await kvGetJSON<SlidingWindowState>(key);
+    
+    // Filter out expired requests and count current window requests
+    const activeRequests = state?.requests.filter(
+        (req) => req.timestamp > windowStart
+    ) || [];
+    
+    const currentWeight = activeRequests.reduce(
+        (sum, req) => sum + (req.weight || 1),
+        0
+    );
+    
+    if (currentWeight + weight > limit) {
+        // Find when the oldest request will expire
+        const oldestRequest = activeRequests[0];
+        const retryAfterMs = oldestRequest
+            ? oldestRequest.timestamp + windowMs - now
+            : 0;
+            
+        return {
+            success: false,
+            remaining: Math.max(0, limit - currentWeight),
+            retryAfterMs,
+            resetAt: now + retryAfterMs,
+        };
+    }
+    
+    // Add new request
+    activeRequests.push({ timestamp: now, weight });
+    
+    const newState: SlidingWindowState = {
+        requests: activeRequests,
+        windowStart: now,
+    };
+    
+    await kvPutJSON(key, newState, {
+        expirationTtl: Math.ceil(windowMs / 1000) + 5,
+    });
+    
+    return {
+        success: true,
+        remaining: limit - currentWeight - weight,
+        retryAfterMs: 0,
+        resetAt: now + windowMs,
+    };
+}
+
 export async function consumeRateLimit(
     key: string,
     limit = 60,
-    windowMs = 60_000
+    windowMs = 60_000,
+    useSlidingWindow = false
 ) {
-    return incrementWindow(`rl:${key}`, limit, windowMs);
+    const rateLimitKey = `rl:${key}`;
+    
+    if (useSlidingWindow) {
+        return incrementSlidingWindow(rateLimitKey, limit, windowMs);
+    }
+    
+    return incrementWindow(rateLimitKey, limit, windowMs);
+}
+
+// Enhanced rate limit with caching for frequently accessed limits
+export async function consumeCachedRateLimit(
+    key: string,
+    limit = 60,
+    windowMs = 60_000
+): Promise<RateResult> {
+    // Use cache to reduce KV reads for high-frequency checks
+    const cacheKey = `rl:cache:${key}`;
+    const cached = await kvRemember<RateResult>(
+        cacheKey,
+        async () => consumeRateLimit(key, limit, windowMs),
+        1, // Cache for 1 second
+        'ratelimit'
+    );
+    
+    return cached;
 }
 
 export type HybridLimiterConfig = {

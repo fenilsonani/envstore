@@ -1,16 +1,11 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 test.describe('Environment Management', () => {
-    let page: Page;
     const testEmail = `e2e-env${Date.now()}@example.com`;
     const testPassword = 'E2ETestPassword123!';
-    let projectId: string;
 
-    test.beforeAll(async ({ browser }) => {
+    test.beforeEach(async ({ page }) => {
         // Setup: Create user, login, and create project
-        const context = await browser.newContext();
-        page = await context.newPage();
-        
         // Signup
         await page.goto('/signup');
         await page.fill('input[type="email"]', testEmail);
@@ -28,7 +23,7 @@ test.describe('Environment Management', () => {
         await page.waitForTimeout(2000);
     });
 
-    test('should upload environment file', async () => {
+    test('should upload environment file', async ({ page }) => {
         await page.goto('/dashboard/environments');
         
         // Select project if dropdown exists
@@ -57,7 +52,7 @@ NODE_ENV=development`;
         await expect(page.locator('text=Successfully uploaded')).toBeVisible({ timeout: 5000 });
     });
 
-    test('should list uploaded environments', async () => {
+    test('should list uploaded environments', async ({ page }) => {
         await page.goto('/dashboard/environments');
         
         // Should show the uploaded environment
@@ -65,14 +60,14 @@ NODE_ENV=development`;
         await expect(page.locator('text=Version 1')).toBeVisible();
     });
 
-    test('should show encryption status', async () => {
+    test('should show encryption status', async ({ page }) => {
         await page.goto('/dashboard/environments');
         
         // Should indicate encrypted status
         await expect(page.locator('text=Encrypted').or(page.locator('[aria-label*="encrypted"]'))).toBeVisible();
     });
 
-    test('should handle multiple environments', async () => {
+    test('should handle multiple environments', async ({ page }) => {
         await page.goto('/dashboard/environments');
         
         // Upload staging environment
@@ -91,7 +86,7 @@ NODE_ENV=staging`;
         await expect(page.locator('text=staging')).toBeVisible();
     });
 
-    test('should handle environment versions', async () => {
+    test('should handle environment versions', async ({ page }) => {
         await page.goto('/dashboard/environments');
         
         // Upload new version of development
@@ -110,7 +105,7 @@ NEW_FEATURE=enabled`;
         await expect(page.locator('text=Version 2')).toBeVisible({ timeout: 5000 });
     });
 
-    test('should decrypt environment file', async () => {
+    test('should decrypt environment file', async ({ page }) => {
         await page.goto('/dashboard/environments');
         
         // Click on an environment to decrypt
@@ -124,7 +119,7 @@ NEW_FEATURE=enabled`;
         await expect(page.locator('text=DATABASE_URL')).toBeVisible({ timeout: 5000 });
     });
 
-    test('should handle wrong passphrase', async () => {
+    test('should handle wrong passphrase', async ({ page }) => {
         await page.goto('/dashboard/environments');
         
         // Click on an environment
@@ -138,7 +133,7 @@ NEW_FEATURE=enabled`;
         await expect(page.locator('text=incorrect').or(page.locator('text=failed'))).toBeVisible({ timeout: 5000 });
     });
 
-    test('should copy environment to clipboard', async () => {
+    test('should copy environment to clipboard', async ({ page }) => {
         await page.goto('/dashboard/environments');
         
         // Grant clipboard permissions
@@ -156,7 +151,7 @@ NEW_FEATURE=enabled`;
         await expect(page.locator('text=Copied')).toBeVisible({ timeout: 5000 });
     });
 
-    test('should filter environments by project', async () => {
+    test('should filter environments by project', async ({ page }) => {
         // Create another project
         await page.goto('/dashboard/projects');
         await page.click('text=New Project');
