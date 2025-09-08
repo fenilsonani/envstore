@@ -12,6 +12,242 @@
 
 ---
 
+## 🏗️ System Architecture
+
+### High-Level Architecture
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Browser[Web Browser]
+        API[API Clients]
+    end
+    
+    subgraph "Application Layer - Next.js"
+        Pages[React Pages]
+        MW[Middleware]
+        Auth[Auth Handler]
+        TRPC[tRPC Router]
+        REST[REST API v1]
+    end
+    
+    subgraph "Caching & Rate Limiting"
+        KV[Cloudflare KV]
+        RL[Rate Limiter]
+        SC[Session Cache]
+    end
+    
+    subgraph "Data Layer"
+        DB[(Turso DB / LibSQL)]
+        Crypto[Crypto Engine]
+    end
+    
+    Browser --> Pages
+    API --> REST
+    Pages --> MW
+    MW --> Auth
+    MW --> RL
+    Pages --> TRPC
+    TRPC --> Auth
+    REST --> Auth
+    Auth --> SC
+    SC --> KV
+    RL --> KV
+    TRPC --> DB
+    REST --> DB
+    TRPC --> Crypto
+    REST --> Crypto
+    
+    style Browser fill:#e1f5fe
+    style API fill:#e1f5fe
+    style KV fill:#fff3e0
+    style DB fill:#f3e5f5
+    style Crypto fill:#ffebee
+```
+
+### Data Flow Architecture
+```mermaid
+flowchart LR
+    subgraph "Upload Flow"
+        U1[User Input] --> U2[Validate]
+        U2 --> U3[Encrypt Client-Side]
+        U3 --> U4[Send to API]
+        U4 --> U5[Store in DB]
+        U5 --> U6[Cache Metadata]
+    end
+    
+    subgraph "Retrieval Flow"
+        R1[Request] --> R2[Check Cache]
+        R2 -->|Hit| R3[Return Cached]
+        R2 -->|Miss| R4[Query DB]
+        R4 --> R5[Update Cache]
+        R5 --> R6[Return Data]
+        R3 --> R7[Decrypt Client-Side]
+        R6 --> R7
+    end
+```
+
+### Encryption & Security Flow
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant API
+    participant KV
+    participant DB
+    
+    User->>Client: Enter .env + passphrase
+    Client->>Client: Generate salt
+    Client->>Client: PBKDF2 (210k iterations)
+    Client->>Client: AES-256-GCM encrypt
+    Client->>API: Send ciphertext + metadata
+    API->>KV: Check rate limit
+    KV-->>API: Rate limit OK
+    API->>DB: Store encrypted data
+    DB-->>API: Success
+    API->>KV: Cache session
+    API-->>Client: Return file ID + version
+    Client-->>User: Success notification
+    
+    Note over Client: Zero-knowledge: Server never sees plaintext
+    Note over KV: Sliding window rate limiting
+    Note over DB: Only ciphertext stored
+```
+
+### Component Architecture
+```mermaid
+graph TD
+    subgraph "Frontend Components"
+        Layout[DashboardLayout]
+        Error[ErrorBoundary]
+        
+        subgraph "Pages"
+            Home[Landing Page]
+            Auth[Auth Pages]
+            Dash[Dashboard]
+            Proj[Projects]
+            Env[Environments]
+            Keys[API Keys]
+        end
+        
+        subgraph "UI"
+            Code[CodeBlock]
+            Decrypt[DecryptDrawer]
+            Forms[Form Components]
+        end
+    end
+    
+    subgraph "Backend Services"
+        subgraph "tRPC"
+            ProjAPI[Project CRUD]
+            EnvAPI[Environment CRUD]
+            KeyAPI[API Key Mgmt]
+            UserAPI[User Mgmt]
+        end
+        
+        subgraph "Core"
+            AuthSvc[Auth Service]
+            CryptoSvc[Crypto Service]
+            RateSvc[Rate Limit Service]
+            CacheSvc[Cache Service]
+        end
+    end
+    
+    Layout --> Home
+    Layout --> Auth
+    Layout --> Dash
+    Home --> Code
+    Auth --> Forms
+    Dash --> Decrypt
+    ProjAPI --> AuthSvc
+    EnvAPI --> CryptoSvc
+    KeyAPI --> RateSvc
+    UserAPI --> CacheSvc
+    
+    style Layout fill:#e3f2fd
+    style AuthSvc fill:#ffecb3
+    style CryptoSvc fill:#ffcdd2
+    style CacheSvc fill:#c8e6c9
+```
+
+
+### Rate Limiting Strategy
+```mermaid
+graph LR
+    subgraph "Request Flow"
+        Req[Incoming Request]
+        Check{Check Identity}
+        IP[IP-based Limit]
+        Key[API Key Limit]
+        Session[Session Limit]
+    end
+    
+    subgraph "Cloudflare KV"
+        Window[Sliding Window]
+        Counter[Request Counter]
+        Cache[Cached Results]
+    end
+    
+    subgraph "Response"
+        Allow[✅ Allow Request]
+        Deny[❌ Rate Limited]
+    end
+    
+    Req --> Check
+    Check -->|Anonymous| IP
+    Check -->|API Key| Key
+    Check -->|Session| Session
+    
+    IP --> Window
+    Key --> Window
+    Session --> Cache
+    
+    Window --> Counter
+    Counter -->|Under Limit| Allow
+    Counter -->|Over Limit| Deny
+    
+    style Allow fill:#c8e6c9
+    style Deny fill:#ffcdd2
+    style Cache fill:#fff9c4
+```
+
+### Testing Architecture
+```mermaid
+graph TB
+    subgraph "Test Suite"
+        Unit[Unit Tests - 53]
+        Integration[Integration Tests - 24]
+        Component[Component Tests - 35]
+        E2E[E2E Tests - 24]
+        Perf[Performance Tests - 7]
+        A11y[Accessibility Tests - 11]
+    end
+    
+    subgraph "Coverage"
+        Backend[Backend 100%]
+        UIComp[UI 95%]
+        APIEnd[API 100%]
+        AuthCov[Auth 100%]
+        CryptoCov[Crypto 100%]
+    end
+    
+    Unit --> Backend
+    Unit --> CryptoCov
+    Integration --> APIEnd
+    Component --> UIComp
+    E2E --> AuthCov
+    Perf --> Backend
+    A11y --> UIComp
+    
+    style Unit fill:#e8f5e9
+    style Integration fill:#e3f2fd
+    style Component fill:#f3e5f5
+    style E2E fill:#fff3e0
+    style Backend fill:#c8e6c9
+    style UIComp fill:#e1bee7
+```
+
+---
+
 ## 🆕 Recent Improvements
 
 ### **Cloudflare KV Integration** (Latest)
