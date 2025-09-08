@@ -47,3 +47,16 @@ next-env.d.ts
 # database
 local.db
 *.db
+
+# test reports
+*_TEST_REPORT.md
+*_TESTS_PASSING.md
+test-results/
+playwright-report/
+
+# marketing materials
+marketing/
+
+# package manager locks (using pnpm)
+package-lock.json
+yarn.lock

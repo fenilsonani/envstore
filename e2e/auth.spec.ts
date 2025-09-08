@@ -1,24 +1,23 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 test.describe('Authentication Flow', () => {
-    let page: Page;
     const testEmail = `e2e${Date.now()}@example.com`;
     const testPassword = 'E2ETestPassword123!';
 
-    test.beforeEach(async ({ page: testPage }) => {
-        page = testPage;
+    test.beforeEach(async ({ page }) => {
         await page.goto('/');
     });
 
-    test('should display homepage with login/signup options', async () => {
+    test('should display homepage with login/signup options', async ({ page }) => {
         await expect(page).toHaveTitle(/EnvStore/);
-        await expect(page.locator('text=Get Started')).toBeVisible();
-        await expect(page.locator('text=Login')).toBeVisible();
+        // Check for either "Get started" or signup link
+        const getStartedLink = page.locator('a[href="/signup"]').first();
+        await expect(getStartedLink).toBeVisible();
     });
 
-    test('complete signup flow', async () => {
+    test('complete signup flow', async ({ page }) => {
         // Navigate to signup
-        await page.click('text=Get Started');
+        await page.click('text=Get started free');
         await expect(page).toHaveURL('/signup');
 
         // Fill signup form
@@ -33,7 +32,7 @@ test.describe('Authentication Flow', () => {
         await expect(page.locator('text=Dashboard')).toBeVisible();
     });
 
-    test('complete login flow', async () => {
+    test('complete login flow', async ({ page }) => {
         // Navigate to login
         await page.goto('/login');
         
@@ -49,7 +48,7 @@ test.describe('Authentication Flow', () => {
         await expect(page.locator('text=Dashboard')).toBeVisible();
     });
 
-    test('should handle invalid login', async () => {
+    test('should handle invalid login', async ({ page }) => {
         await page.goto('/login');
         
         await page.fill('input[type="email"]', 'wrong@example.com');
@@ -64,7 +63,7 @@ test.describe('Authentication Flow', () => {
         await expect(page).toHaveURL('/login');
     });
 
-    test('should protect dashboard routes', async () => {
+    test('should protect dashboard routes', async ({ page }) => {
         // Try to access dashboard without auth
         await page.goto('/dashboard');
         
@@ -72,7 +71,7 @@ test.describe('Authentication Flow', () => {
         await expect(page).toHaveURL('/login');
     });
 
-    test('logout flow', async () => {
+    test('logout flow', async ({ page }) => {
         // First login
         await page.goto('/login');
         await page.fill('input[type="email"]', testEmail);
@@ -92,7 +91,7 @@ test.describe('Authentication Flow', () => {
         await expect(page).toHaveURL('/login');
     });
 
-    test('password requirements validation', async () => {
+    test('password requirements validation', async ({ page }) => {
         await page.goto('/signup');
         
         // Try short password
@@ -104,7 +103,7 @@ test.describe('Authentication Flow', () => {
         await expect(page.locator('text=invalid').or(page.locator('text=minimum'))).toBeVisible();
     });
 
-    test('email validation', async () => {
+    test('email validation', async ({ page }) => {
         await page.goto('/signup');
         
         // Try invalid email

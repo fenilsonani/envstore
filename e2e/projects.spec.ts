@@ -1,16 +1,11 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 test.describe('Project Management', () => {
-    let page: Page;
     const testEmail = `e2e-project${Date.now()}@example.com`;
     const testPassword = 'E2ETestPassword123!';
-    let projectId: string;
 
-    test.beforeAll(async ({ browser }) => {
+    test.beforeEach(async ({ page }) => {
         // Setup: Create user and login
-        const context = await browser.newContext();
-        page = await context.newPage();
-        
         // Signup
         await page.goto('/signup');
         await page.fill('input[type="email"]', testEmail);
@@ -20,7 +15,7 @@ test.describe('Project Management', () => {
         await page.waitForURL('/dashboard/**', { timeout: 10000 });
     });
 
-    test('should create a new project', async () => {
+    test('should create a new project', async ({ page }) => {
         await page.goto('/dashboard/projects');
         
         // Click new project button
@@ -35,13 +30,9 @@ test.describe('Project Management', () => {
         
         // Verify project appears in list
         await expect(page.locator(`text=${projectName}`)).toBeVisible({ timeout: 5000 });
-        
-        // Extract project ID from the page
-        const projectCard = page.locator(`text=${projectName}`).locator('..');
-        projectId = await projectCard.getAttribute('data-project-id') || '';
     });
 
-    test('should rename a project', async () => {
+    test('should rename a project', async ({ page }) => {
         await page.goto('/dashboard/projects');
         
         // Find edit button for the project
@@ -59,7 +50,7 @@ test.describe('Project Management', () => {
         await expect(page.locator(`text=${newName}`)).toBeVisible({ timeout: 5000 });
     });
 
-    test('should navigate to environments page', async () => {
+    test('should navigate to environments page', async ({ page }) => {
         await page.goto('/dashboard/projects');
         
         // Click on environments button
@@ -71,7 +62,7 @@ test.describe('Project Management', () => {
         await expect(page.locator('text=Environments')).toBeVisible();
     });
 
-    test('should show project statistics', async () => {
+    test('should show project statistics', async ({ page }) => {
         await page.goto('/dashboard/projects');
         
         // Check for statistics display
@@ -84,7 +75,7 @@ test.describe('Project Management', () => {
         await expect(projectCard.locator('text=Last Activity')).toBeVisible();
     });
 
-    test('should handle empty project list', async () => {
+    test('should handle empty project list', async ({ page }) => {
         // Create new user with no projects
         const emptyUserEmail = `empty${Date.now()}@example.com`;
         
@@ -101,7 +92,7 @@ test.describe('Project Management', () => {
         await expect(page.locator('text=Create Your First Project')).toBeVisible();
     });
 
-    test('should delete a project', async () => {
+    test('should delete a project', async ({ page }) => {
         // Login back to user with projects
         await page.goto('/login');
         await page.fill('input[type="email"]', testEmail);

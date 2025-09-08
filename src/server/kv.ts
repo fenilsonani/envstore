@@ -216,6 +216,135 @@ export function getClientIpFromHeaders(headers: Headers): string {
     return '0.0.0.0';
 }
 
+// Cache entry type for structured caching
+export type CacheEntry<T> = {
+    data: T;
+    createdAt: number;
+    expiresAt?: number;
+    tags?: string[];
+};
+
+// Cache wrapper functions
+export async function kvGetCached<T>(
+    key: string,
+    namespace = 'cache'
+): Promise<T | null> {
+    const fullKey = `${namespace}:${key}`;
+    const entry = await kvGetJSON<CacheEntry<T>>(fullKey);
+    
+    if (!entry) return null;
+    
+    // Check if expired
+    if (entry.expiresAt && entry.expiresAt < Date.now()) {
+        await kvDelete(fullKey);
+        return null;
+    }
+    
+    return entry.data;
+}
+
+export async function kvSetCached<T>(
+    key: string,
+    value: T,
+    ttlSeconds = 3600,
+    namespace = 'cache',
+    tags?: string[]
+): Promise<void> {
+    const fullKey = `${namespace}:${key}`;
+    const now = Date.now();
+    
+    const entry: CacheEntry<T> = {
+        data: value,
+        createdAt: now,
+        expiresAt: ttlSeconds > 0 ? now + ttlSeconds * 1000 : undefined,
+        tags,
+    };
+    
+    await kvPutJSON(fullKey, entry, {
+        expirationTtl: ttlSeconds > 0 ? ttlSeconds : undefined,
+    });
+    
+    // Store tag associations if provided
+    if (tags) {
+        for (const tag of tags) {
+            const tagKey = `tag:${namespace}:${tag}`;
+            const keys = (await kvGetJSON<string[]>(tagKey)) || [];
+            if (!keys.includes(key)) {
+                keys.push(key);
+                await kvPutJSON(tagKey, keys, {
+                    expirationTtl: ttlSeconds > 0 ? ttlSeconds : undefined,
+                });
+            }
+        }
+    }
+}
+
+// Remember pattern - get from cache or compute
+export async function kvRemember<T>(
+    key: string,
+    factory: () => Promise<T>,
+    ttlSeconds = 3600,
+    namespace = 'cache'
+): Promise<T> {
+    const cached = await kvGetCached<T>(key, namespace);
+    if (cached !== null) return cached;
+    
+    const value = await factory();
+    await kvSetCached(key, value, ttlSeconds, namespace);
+    return value;
+}
+
+// Invalidate by tag
+export async function kvInvalidateByTag(
+    tag: string,
+    namespace = 'cache'
+): Promise<void> {
+    const tagKey = `tag:${namespace}:${tag}`;
+    const keys = await kvGetJSON<string[]>(tagKey);
+    
+    if (keys) {
+        await Promise.all(
+            keys.map((key) => kvDelete(`${namespace}:${key}`))
+        );
+        await kvDelete(tagKey);
+    }
+}
+
+// Session caching helpers
+export type SessionData = {
+    userId: string;
+    email: string;
+    createdAt: number;
+    expiresAt: number;
+    metadata?: Record<string, unknown>;
+};
+
+export async function kvGetSession(token: string): Promise<SessionData | null> {
+    return kvGetCached<SessionData>(`token:${token}`, 'session');
+}
+
+export async function kvSetSession(
+    token: string,
+    session: SessionData,
+    ttlSeconds = 3600
+): Promise<void> {
+    await kvSetCached(
+        `token:${token}`,
+        session,
+        ttlSeconds,
+        'session',
+        [`user:${session.userId}`]
+    );
+}
+
+export async function kvInvalidateSession(token: string): Promise<void> {
+    await kvDelete(`session:token:${token}`);
+}
+
+export async function kvInvalidateUserSessions(userId: string): Promise<void> {
+    await kvInvalidateByTag(`user:${userId}`, 'session');
+}
+
 // Health check utility
 export async function kvHealthCheck(): Promise<{
     ok: boolean;
