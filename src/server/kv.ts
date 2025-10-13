@@ -33,8 +33,8 @@ function getKvConfig() {
     const token = process.env.CF_API_TOKEN;
 
     if (!accountId || !namespaceId || !token) {
-        // Return null in test/dev without throwing - KV is optional for local testing
-        if (process.env.NODE_ENV === 'test' || !process.env.CI) {
+        // Return null in test/dev - KV is optional for testing
+        if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
             return null;
         }
         throw new Error(
