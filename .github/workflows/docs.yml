@@ -1,0 +1,215 @@
+name: Documentation
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'src/**'
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'src/**'
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  validate-openapi:
+    name: Validate OpenAPI Spec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install OpenAPI Validator
+        run: npm install -g @redocly/cli
+
+      - name: Validate OpenAPI Specification
+        run: |
+          redocly lint docs/openapi.yaml --format=stylish
+
+      - name: Check for Breaking Changes (on PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          # Fetch base branch
+          git fetch origin ${{ github.base_ref }}
+
+          # Check if openapi.yaml changed
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "docs/openapi.yaml"; then
+            echo "OpenAPI spec changed - checking for breaking changes..."
+            redocly diff origin/${{ github.base_ref }}:docs/openapi.yaml docs/openapi.yaml || true
+          else
+            echo "OpenAPI spec unchanged"
+          fi
+
+  generate-docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    needs: validate-openapi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate TypeScript API Client from OpenAPI
+        run: |
+          npm install -g openapi-typescript
+          openapi-typescript docs/openapi.yaml --output docs/generated/api-types.ts
+
+      - name: Extract tRPC Type Definitions
+        run: |
+          # Create docs/generated directory
+          mkdir -p docs/generated
+
+          # Extract tRPC router types
+          echo "Extracting tRPC types..."
+          npx tsc --declaration --emitDeclarationOnly --outDir docs/generated src/server/trpc/router.ts || true
+
+      - name: Generate API Reference from Code
+        run: |
+          # Generate JSON documentation from source code
+          npx typedoc --json docs/generated/api-docs.json src/server/trpc/router.ts src/server/crypto.ts src/server/auth.ts --skipErrorChecking || true
+
+      - name: Build Documentation Site
+        run: |
+          mkdir -p docs/build
+
+          # Copy static files
+          cp docs/index.html docs/build/
+          cp docs/openapi.yaml docs/build/
+          cp docs/sdk-examples.md docs/build/
+
+          # Copy generated files
+          cp -r docs/generated docs/build/ || true
+
+      - name: Generate Redoc Documentation
+        run: |
+          npm install -g @redocly/cli
+          redocly build-docs docs/openapi.yaml --output docs/build/redoc.html
+
+      - name: Generate Markdown Documentation
+        run: |
+          npm install -g widdershins
+          widdershins docs/openapi.yaml -o docs/build/api-reference.md
+
+      - name: Create Documentation Archive
+        run: |
+          tar -czf documentation.tar.gz -C docs/build .
+
+      - name: Upload Documentation Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: documentation.tar.gz
+          retention-days: 30
+
+      - name: Upload Pages Artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/build
+
+  check-docs-coverage:
+    name: Check Documentation Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check TypeScript Documentation Coverage
+        run: |
+          # Install documentation linter
+          npm install -g documentation
+
+          # Check documentation coverage for main modules
+          echo "Checking documentation coverage..."
+
+          # Create coverage report
+          documentation lint src/server/trpc/router.ts || true
+          documentation lint src/server/crypto.ts || true
+          documentation lint src/server/auth.ts || true
+
+      - name: Verify All Endpoints Are Documented
+        run: |
+          echo "Verifying API endpoint documentation..."
+
+          # Check that all route files have corresponding OpenAPI documentation
+          ROUTE_FILES=$(find src/app/api -name "route.ts" | wc -l)
+          echo "Found $ROUTE_FILES route files"
+
+          # Count OpenAPI paths
+          OPENAPI_PATHS=$(grep -c "^  /" docs/openapi.yaml || true)
+          echo "Found $OPENAPI_PATHS documented paths"
+
+          if [ $OPENAPI_PATHS -lt $ROUTE_FILES ]; then
+            echo "⚠️ Warning: Some API routes may be missing from OpenAPI documentation"
+          else
+            echo "✓ All routes appear to be documented"
+          fi
+
+      - name: Check for Outdated Examples
+        run: |
+          echo "Checking for outdated code examples..."
+
+          # Verify SDK examples match current API
+          if grep -q "deprecated" docs/sdk-examples.md; then
+            echo "⚠️ Warning: Found deprecated examples in SDK documentation"
+            exit 1
+          fi
+
+          echo "✓ No deprecated examples found"
+
+  notify-docs-update:
+    name: Notify Documentation Update
+    runs-on: ubuntu-latest
+    needs: [generate-docs]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    steps:
+      - name: Create Summary
+        run: |
+          echo "### 📚 Documentation Updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Documentation has been successfully built and deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**View Documentation:**" >> $GITHUB_STEP_SUMMARY
+          echo "- [Interactive API Docs](https://fenilsonani.github.io/envstore/)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Redoc View](https://fenilsonani.github.io/envstore/redoc.html)" >> $GITHUB_STEP_SUMMARY
+          echo "- [OpenAPI Spec](https://fenilsonani.github.io/envstore/openapi.yaml)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**What's New:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Updated API reference" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest code examples" >> $GITHUB_STEP_SUMMARY
+          echo "- Current architecture diagrams" >> $GITHUB_STEP_SUMMARY

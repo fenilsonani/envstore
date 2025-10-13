@@ -40,13 +40,17 @@ test.describe('Visual Regression Tests', () => {
     test('dashboard visual test', async ({ page }) => {
         // Login first
         await page.goto('/login');
-        await page.fill('input[type="email"]', 'test@example.com');
-        await page.fill('input[type="password"]', 'TestPassword123!');
-        await page.click('button[type="submit"]');
-        
-        await page.waitForURL('/dashboard/**');
         await page.waitForLoadState('networkidle');
-        
+        await page.fill('#email', 'test@example.com');
+        await page.fill('#password', 'TestPassword123!');
+
+        await Promise.all([
+            page.waitForNavigation({ url: /\/dashboard/, timeout: 15000 }),
+            page.click('button:has-text("Sign in")')
+        ]);
+
+        await page.waitForLoadState('networkidle');
+
         await expect(page).toHaveScreenshot('dashboard.png', {
             fullPage: true,
             animations: 'disabled',
@@ -92,16 +96,17 @@ test.describe('Visual Regression Tests', () => {
 
     test('form states visual test', async ({ page }) => {
         await page.goto('/login');
-        
+        await page.waitForLoadState('networkidle');
+
         // Focus state
-        await page.focus('input[type="email"]');
-        await expect(page.locator('input[type="email"]')).toHaveScreenshot('input-focused.png');
-        
+        await page.focus('#email');
+        await expect(page.locator('#email')).toHaveScreenshot('input-focused.png');
+
         // Error state
-        await page.fill('input[type="email"]', 'invalid');
-        await page.click('button[type="submit"]');
+        await page.fill('#email', 'invalid');
+        await page.click('button:has-text("Sign in")');
         await page.waitForTimeout(500);
-        
+
         await expect(page.locator('form')).toHaveScreenshot('form-error.png');
     });
 

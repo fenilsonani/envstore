@@ -50,18 +50,18 @@ vi.mock('../server/kv', async () => {
     // Create cache functions using mocked base functions
     const kvGetCached = async <T>(key: string, namespace = 'cache'): Promise<T | null> => {
         const fullKey = `${namespace}:${key}`;
-        const entry = await mockKvGetJSON(fullKey) as actual.CacheEntry<T> | null;
-        
+        const entry = await mockKvGetJSON(fullKey) as CacheEntry<T> | null;
+
         if (!entry) return null;
-        
+
         if (entry.expiresAt && entry.expiresAt < Date.now()) {
             await mockKvDelete(fullKey);
             return null;
         }
-        
+
         return entry.data;
     };
-    
+
     const kvSetCached = async <T>(
         key: string,
         value: T,
@@ -71,16 +71,16 @@ vi.mock('../server/kv', async () => {
     ): Promise<void> => {
         const fullKey = `${namespace}:${key}`;
         const now = Date.now();
-        
-        const entry: actual.CacheEntry<T> = {
+
+        const entry: CacheEntry<T> = {
             data: value,
             createdAt: now,
             expiresAt: ttlSeconds > 0 ? now + ttlSeconds * 1000 : undefined,
             tags,
         };
-        
+
         await mockKvPutJSON(fullKey, entry);
-        
+
         if (tags) {
             for (const tag of tags) {
                 const tagKey = `tag:${namespace}:${tag}`;
@@ -119,13 +119,13 @@ vi.mock('../server/kv', async () => {
         }
     };
     
-    const kvGetSession = async (token: string): Promise<actual.SessionData | null> => {
-        return kvGetCached<actual.SessionData>(`token:${token}`, 'session');
+    const kvGetSession = async (token: string): Promise<SessionData | null> => {
+        return kvGetCached<SessionData>(`token:${token}`, 'session');
     };
-    
+
     const kvSetSession = async (
         token: string,
-        session: actual.SessionData,
+        session: SessionData,
         ttlSeconds = 3600
     ): Promise<void> => {
         await kvSetCached(
@@ -159,8 +159,6 @@ vi.mock('../server/kv', async () => {
         kvSetSession,
         kvInvalidateSession,
         kvInvalidateUserSessions,
-        CacheEntry: actual.CacheEntry,
-        SessionData: actual.SessionData,
     };
 });
 
@@ -171,19 +169,19 @@ describe('KV Cache Tests', () => {
         const { kvGetJSON, kvPutJSON, kvDelete } = vi.mocked(
             await import('../server/kv')
         );
-        const kvGetJSONMock = kvGetJSON as ReturnType<typeof vi.fn>;
+        const kvGetJSONMock = kvGetJSON as ReturnType<typeof vi.fn> & { storage?: Map<string, unknown> };
         const kvPutJSONMock = kvPutJSON as ReturnType<typeof vi.fn>;
         const kvDeleteMock = kvDelete as ReturnType<typeof vi.fn>;
-        
+
         kvGetJSONMock.mockImplementation(async (key: string) => {
             return kvGetJSONMock.storage?.get(key) || null;
         });
         kvGetJSONMock.storage = new Map();
         kvPutJSONMock.mockImplementation(async (key: string, value: unknown) => {
-            kvGetJSONMock.storage.set(key, value);
+            kvGetJSONMock.storage?.set(key, value);
         });
         kvDeleteMock.mockImplementation(async (key: string) => {
-            kvGetJSONMock.storage.delete(key);
+            kvGetJSONMock.storage?.delete(key);
         });
     });
 
@@ -458,17 +456,17 @@ describe('Rate Limiting with Caching', () => {
             ) => {
                 const rateLimitKey = `rl:${key}`;
                 const now = Date.now();
-                const state = await kvModule.kvGetJSON(rateLimitKey) || { count: 0, resetAtMs: now + windowMs };
-                
+                const state = await kvModule.kvGetJSON<{ count: number; resetAtMs: number }>(rateLimitKey) || { count: 0, resetAtMs: now + windowMs };
+
                 if (state.resetAtMs <= now) {
                     state.count = 1;
                     state.resetAtMs = now + windowMs;
                 } else {
                     state.count++;
                 }
-                
+
                 await kvModule.kvPutJSON(rateLimitKey, state);
-                
+
                 return {
                     success: state.count <= limit,
                     remaining: Math.max(0, limit - state.count),
@@ -522,18 +520,18 @@ describe('Rate Limiting with Caching', () => {
                 if (useSlidingWindow) {
                     const now = Date.now();
                     const windowStart = now - windowMs;
-                    
-                    const state = await kvModule.kvGetJSON(rateLimitKey) || { requests: [] };
-                    
+
+                    const state = await kvModule.kvGetJSON<{ requests: Array<{ timestamp: number }> }>(rateLimitKey) || { requests: [] };
+
                     // Filter out expired requests
                     state.requests = state.requests.filter((req: { timestamp: number }) => req.timestamp > windowStart);
-                    
+
                     const currentCount = state.requests.length;
-                    
+
                     if (currentCount >= limit) {
                         const oldestRequest = state.requests[0];
                         const retryAfterMs = oldestRequest ? oldestRequest.timestamp + windowMs - now : 0;
-                        
+
                         return {
                             success: false,
                             remaining: 0,
@@ -541,10 +539,10 @@ describe('Rate Limiting with Caching', () => {
                             resetAt: now + retryAfterMs,
                         };
                     }
-                    
+
                     state.requests.push({ timestamp: now });
                     await kvModule.kvPutJSON(rateLimitKey, state);
-                    
+
                     return {
                         success: true,
                         remaining: limit - currentCount - 1,
@@ -554,17 +552,17 @@ describe('Rate Limiting with Caching', () => {
                 } else {
                     // Simple window implementation
                     const now = Date.now();
-                    const state = await kvModule.kvGetJSON(rateLimitKey) || { count: 0, resetAtMs: now + windowMs };
-                    
+                    const state = await kvModule.kvGetJSON<{ count: number; resetAtMs: number }>(rateLimitKey) || { count: 0, resetAtMs: now + windowMs };
+
                     if (state.resetAtMs <= now) {
                         state.count = 1;
                         state.resetAtMs = now + windowMs;
                     } else {
                         state.count++;
                     }
-                    
+
                     await kvModule.kvPutJSON(rateLimitKey, state);
-                    
+
                     return {
                         success: state.count <= limit,
                         remaining: Math.max(0, limit - state.count),

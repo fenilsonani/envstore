@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnvStore API Documentation</title>
+    <meta name="description" content="Secure environment variable management API with end-to-end encryption">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+        .content {
+            padding: 3rem 2rem;
+        }
+        .nav {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        .nav-card {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 2rem;
+            text-decoration: none;
+            color: #2d3748;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .nav-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+        .nav-card h2 {
+            color: #667eea;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .nav-card p {
+            color: #4a5568;
+            line-height: 1.6;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+        .feature {
+            text-align: center;
+            padding: 1.5rem;
+        }
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .feature h3 {
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+            font-size: 1.25rem;
+        }
+        .feature p {
+            color: #4a5568;
+            font-size: 0.95rem;
+        }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background: #f7fafc;
+            color: #718096;
+            border-top: 1px solid #e2e8f0;
+        }
+        .badge {
+            display: inline-block;
+            background: #48bb78;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 EnvStore API</h1>
+            <p>Secure environment variable management with end-to-end encryption</p>
+        </header>
+
+        <div class="content">
+            <div class="nav">
+                <a href="redoc.html" class="nav-card">
+                    <h2>📖 Interactive API Docs</h2>
+                    <p>Explore the API with interactive ReDoc documentation. Browse endpoints, schemas, and examples.</p>
+                </a>
+
+                <a href="openapi.yaml" class="nav-card">
+                    <h2>📄 OpenAPI Spec</h2>
+                    <p>Download the OpenAPI 3.1 specification for code generation, testing, and integration.</p>
+                </a>
+
+                <a href="api-reference.md" class="nav-card">
+                    <h2>📚 API Reference</h2>
+                    <p>Comprehensive Markdown reference documentation for all API endpoints and schemas.</p>
+                </a>
+
+                <a href="sdk-examples.md" class="nav-card">
+                    <h2>💻 SDK Examples</h2>
+                    <p>Code examples in multiple languages showing how to integrate with the EnvStore API.</p>
+                </a>
+            </div>
+
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">🔒</div>
+                    <h3>End-to-End Encryption</h3>
+                    <p>All environment variables are encrypted at rest and in transit using AES-256-GCM</p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <h3>KV Caching</h3>
+                    <p>Cloudflare KV caching for sub-50ms response times globally</p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Rate Limiting</h3>
+                    <p>Built-in rate limiting to protect against abuse and ensure fair usage</p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">📦</div>
+                    <h3>Version Control</h3>
+                    <p>Automatic versioning of environment files with rollback capabilities</p>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 3rem; color: #2d3748;">Quick Start</h2>
+            <p style="margin: 1rem 0; color: #4a5568;">
+                Get started with the EnvStore API in minutes. Create an account, generate an API key,
+                and start managing your environment variables securely.
+            </p>
+
+            <pre style="background: #2d3748; color: #e2e8f0; padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0;">
+<code># Upload environment file
+curl -X POST https://envstore.app/api/v1/env/upload \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "550e8400-e29b-41d4-a716-446655440000",
+    "environment": "production",
+    "content": "DATABASE_URL=postgresql://...",
+    "passphrase": "secure-passphrase"
+  }'
+
+# Retrieve latest version
+curl https://envstore.app/api/v1/env/latest \
+  ?projectId=550e8400-e29b-41d4-a716-446655440000 \
+  &environment=production \
+  -H "x-api-key: YOUR_API_KEY"</code></pre>
+        </div>
+
+        <footer>
+            <p>&copy; 2025 EnvStore. Built with Next.js, Cloudflare KV, and Turso.</p>
+            <p style="margin-top: 0.5rem;">
+                <a href="https://github.com/fenilsonani/envstore" style="color: #667eea; text-decoration: none;">GitHub</a> •
+                <a href="mailto:support@envstore.app" style="color: #667eea; text-decoration: none;">Support</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -44,6 +44,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# E2E tests
+local.db
+local.db-shm
+local.db-wal
+test-results/
+playwright-report/
+playwright/.cache/
+e2e/**/*-snapshots/
+
 # database
 local.db
 *.db

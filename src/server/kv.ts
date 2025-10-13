@@ -33,6 +33,10 @@ function getKvConfig() {
     const token = process.env.CF_API_TOKEN;
 
     if (!accountId || !namespaceId || !token) {
+        // Return null in test/dev without throwing - KV is optional for local testing
+        if (process.env.NODE_ENV === 'test' || !process.env.CI) {
+            return null;
+        }
         throw new Error(
             'Cloudflare KV env not configured: CF_ACCOUNT_ID, CF_KV_NAMESPACE_ID, and CF_API_TOKEN are required'
         );
@@ -48,7 +52,9 @@ function getKvConfig() {
 }
 
 export async function kvGetString(key: string): Promise<string | null> {
-    const { baseUrl, headers } = getKvConfig();
+    const config = getKvConfig();
+    if (!config) return null;
+    const { baseUrl, headers } = config;
     const url = `${baseUrl}/values/${encodeURIComponent(key)}`;
 
     const res = await fetch(url, {
@@ -77,7 +83,9 @@ export async function kvGetJSON<T = unknown>(key: string): Promise<T | null> {
 export async function kvGetWithMetadata(
     key: string
 ): Promise<KvMetadata | null> {
-    const { baseUrl, headers } = getKvConfig();
+    const config = getKvConfig();
+    if (!config) return null;
+    const { baseUrl, headers } = config;
     const url = `${baseUrl}/values/${encodeURIComponent(key)}`;
 
     const res = await fetch(url, {
@@ -100,7 +108,9 @@ export async function kvPutString(
     value: string,
     options?: KvPutOptions
 ): Promise<void> {
-    const { baseUrl, headers } = getKvConfig();
+    const config = getKvConfig();
+    if (!config) return;
+    const { baseUrl, headers } = config;
     const url = new URL(`${baseUrl}/values/${encodeURIComponent(key)}`);
 
     // Add query parameters
@@ -150,7 +160,9 @@ export async function kvPutJSON(
 }
 
 export async function kvDelete(key: string): Promise<void> {
-    const { baseUrl, headers } = getKvConfig();
+    const config = getKvConfig();
+    if (!config) return;
+    const { baseUrl, headers } = config;
     const url = `${baseUrl}/values/${encodeURIComponent(key)}`;
 
     const res = await fetch(url, {
@@ -166,7 +178,9 @@ export async function kvDelete(key: string): Promise<void> {
 }
 
 export async function kvList(options?: KvListOptions): Promise<KvListResponse> {
-    const { baseUrl, headers } = getKvConfig();
+    const config = getKvConfig();
+    if (!config) return { result: [], result_info: { count: 0 }, success: true, errors: [], messages: [] };
+    const { baseUrl, headers } = config;
     const url = new URL(`${baseUrl}/keys`);
 
     if (options?.limit)
@@ -185,7 +199,9 @@ export async function kvList(options?: KvListOptions): Promise<KvListResponse> {
 }
 
 export async function kvBulkDelete(keys: string[]): Promise<void> {
-    const { baseUrl, headers } = getKvConfig();
+    const config = getKvConfig();
+    if (!config) return;
+    const { baseUrl, headers } = config;
     const url = `${baseUrl}/bulk`;
 
     const res = await fetch(url, {

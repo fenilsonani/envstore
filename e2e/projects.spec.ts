@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.describe.configure({ mode: 'serial' });
+
 test.describe('Project Management', () => {
     const testEmail = `e2e-project${Date.now()}@example.com`;
     const testPassword = 'E2ETestPassword123!';
@@ -8,11 +10,12 @@ test.describe('Project Management', () => {
         // Setup: Create user and login
         // Signup
         await page.goto('/signup');
-        await page.fill('input[type="email"]', testEmail);
-        await page.fill('input[type="password"]', testPassword);
-        await page.click('button[type="submit"]');
-        
-        await page.waitForURL('/dashboard/**', { timeout: 10000 });
+        await page.waitForLoadState('networkidle');
+        await page.fill('#email', testEmail);
+        await page.fill('#password', testPassword);
+        await page.click('button:has-text("Create account")');
+
+        await page.waitForURL(/\/dashboard/, { timeout: 10000 });
     });
 
     test('should create a new project', async ({ page }) => {
@@ -78,15 +81,16 @@ test.describe('Project Management', () => {
     test('should handle empty project list', async ({ page }) => {
         // Create new user with no projects
         const emptyUserEmail = `empty${Date.now()}@example.com`;
-        
+
         await page.goto('/signup');
-        await page.fill('input[type="email"]', emptyUserEmail);
-        await page.fill('input[type="password"]', testPassword);
-        await page.click('button[type="submit"]');
-        
+        await page.waitForLoadState('networkidle');
+        await page.fill('#email', emptyUserEmail);
+        await page.fill('#password', testPassword);
+        await page.click('button:has-text("Create account")');
+
         await page.waitForURL('/dashboard/**');
         await page.goto('/dashboard/projects');
-        
+
         // Should show empty state
         await expect(page.locator('text=No projects yet')).toBeVisible();
         await expect(page.locator('text=Create Your First Project')).toBeVisible();
@@ -95,20 +99,21 @@ test.describe('Project Management', () => {
     test('should delete a project', async ({ page }) => {
         // Login back to user with projects
         await page.goto('/login');
-        await page.fill('input[type="email"]', testEmail);
-        await page.fill('input[type="password"]', testPassword);
-        await page.click('button[type="submit"]');
-        
+        await page.waitForLoadState('networkidle');
+        await page.fill('#email', testEmail);
+        await page.fill('#password', testPassword);
+        await page.click('button:has-text("Sign in")');
+
         await page.waitForURL('/dashboard/**');
         await page.goto('/dashboard/projects');
-        
+
         // Find delete button
         const projectCard = page.locator('text=Renamed Project').first().locator('../..');
         await projectCard.locator('button[aria-label*="delete"]').click();
-        
+
         // Confirm deletion
         await page.click('text=Delete', { timeout: 5000 });
-        
+
         // Project should be removed
         await expect(page.locator('text=Renamed Project').first()).not.toBeVisible({ timeout: 5000 });
     });

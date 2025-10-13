@@ -1,0 +1,516 @@
+openapi: 3.1.0
+info:
+  title: EnvStore API
+  description: |
+    Secure environment variable management API with end-to-end encryption.
+
+    ## Authentication
+    Most endpoints require API key authentication via the `x-api-key` header.
+
+    ## Rate Limiting
+    All endpoints are rate-limited to prevent abuse. Rate limit headers are included in responses.
+
+    ## Caching
+    The `/v1/env/latest` endpoint uses Cloudflare KV caching with a 60-second TTL.
+  version: 0.1.0
+  contact:
+    name: EnvStore Support
+    url: https://github.com/fenilsonani/envstore
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://envstore.app
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Environment Variables
+    description: Environment variable management endpoints
+  - name: Health
+    description: System health check endpoints
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /api/auth/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Create new user account
+      description: Register a new user with email and password
+      operationId: signup
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email address
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  description: User password (minimum 8 characters)
+            examples:
+              basic:
+                value:
+                  email: user@example.com
+                  password: SecurePass123!
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+              description: Number of requests remaining
+            X-RateLimit-Reset:
+              schema:
+                type: string
+                format: date-time
+              description: Time when the rate limit resets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      description: Login with email and password to get a session cookie
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email address
+                password:
+                  type: string
+                  format: password
+                  description: User password
+            examples:
+              basic:
+                value:
+                  email: user@example.com
+                  password: SecurePass123!
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Invalidate current session
+      operationId: logout
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+
+  /api/v1/env/latest:
+    get:
+      tags:
+        - Environment Variables
+      summary: Get latest environment file
+      description: |
+        Retrieve the latest encrypted environment file for a specific project and environment.
+
+        This endpoint is cached with a 60-second TTL for improved performance.
+        Check the `X-Cache` header to see if the response was served from cache.
+      operationId: getLatestEnv
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Project UUID
+        - name: environment
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Environment name (e.g., development, staging, production)
+          example: production
+      responses:
+        '200':
+          description: Environment file retrieved successfully
+          headers:
+            X-Cache:
+              schema:
+                type: string
+                enum: [HIT, MISS]
+              description: Cache status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncryptedEnvFile'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project or environment file not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds to wait before retrying
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/env/upload:
+    post:
+      tags:
+        - Environment Variables
+      summary: Upload environment file
+      description: |
+        Upload a new version of an encrypted environment file.
+
+        You can either:
+        - Provide plaintext content and passphrase (server-side encryption)
+        - Provide pre-encrypted data (client-side encryption)
+
+        The upload automatically increments the version number and invalidates the cache.
+      operationId: uploadEnv
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/PlaintextUpload'
+                - $ref: '#/components/schemas/EncryptedUpload'
+            examples:
+              plaintext:
+                summary: Server-side encryption
+                value:
+                  projectId: 550e8400-e29b-41d4-a716-446655440000
+                  environment: production
+                  content: |
+                    DATABASE_URL=postgresql://localhost:5432/db
+                    API_KEY=secret123
+                  passphrase: my-secure-passphrase
+              encrypted:
+                summary: Client-side encryption
+                value:
+                  projectId: 550e8400-e29b-41d4-a716-446655440000
+                  environment: production
+                  ciphertext: U2FsdGVkX1...
+                  iv: a1b2c3d4e5f6...
+                  salt: f6e5d4c3b2a1...
+                  checksum: 9f86d081884c...
+      responses:
+        '200':
+          description: Environment file uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: File ID
+                  version:
+                    type: integer
+                    description: New version number
+                example:
+                  id: 660e8400-e29b-41d4-a716-446655440001
+                  version: 5
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/kv/health:
+    get:
+      tags:
+        - Health
+      summary: KV health check
+      description: Check the health and connectivity of the Cloudflare KV storage
+      operationId: kvHealthCheck
+      security: []
+      responses:
+        '200':
+          description: KV is healthy
+          headers:
+            X-KV-Health:
+              schema:
+                type: string
+                enum: [OK, FAIL]
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  roundtripMs:
+                    type: number
+                    description: Round-trip time in milliseconds
+                example:
+                  ok: true
+                  roundtripMs: 45.2
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: KV unhealthy or misconfigured
+          headers:
+            X-KV-Health:
+              schema:
+                type: string
+                enum: [OK, FAIL]
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  error:
+                    type: string
+                  config:
+                    type: object
+                    properties:
+                      hasAccount:
+                        type: boolean
+                      hasNamespace:
+                        type: boolean
+                      hasToken:
+                        type: boolean
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API key for authentication
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message or code
+      required:
+        - error
+
+    EncryptedEnvFile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: File ID
+        version:
+          type: integer
+          description: File version number
+        ciphertext:
+          type: string
+          description: Base64-encoded encrypted content
+        iv:
+          type: string
+          description: Base64-encoded initialization vector
+        salt:
+          type: string
+          description: Base64-encoded salt
+        checksum:
+          type: string
+          description: SHA-256 checksum for integrity verification
+      required:
+        - id
+        - version
+        - ciphertext
+        - iv
+        - salt
+        - checksum
+
+    PlaintextUpload:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: Project UUID
+        environment:
+          type: string
+          description: Environment name
+        content:
+          type: string
+          description: Plaintext environment file content
+        passphrase:
+          type: string
+          minLength: 8
+          description: Encryption passphrase (minimum 8 characters)
+      required:
+        - projectId
+        - environment
+        - content
+        - passphrase
+
+    EncryptedUpload:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: Project UUID
+        environment:
+          type: string
+          description: Environment name
+        ciphertext:
+          type: string
+          description: Base64-encoded encrypted content
+        iv:
+          type: string
+          description: Base64-encoded initialization vector
+        salt:
+          type: string
+          description: Base64-encoded salt
+        checksum:
+          type: string
+          description: SHA-256 checksum
+      required:
+        - projectId
+        - environment
+        - ciphertext
+        - iv
+        - salt
+        - checksum

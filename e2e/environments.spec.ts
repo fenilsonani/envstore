@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.describe.configure({ mode: 'serial' });
+
 test.describe('Environment Management', () => {
     const testEmail = `e2e-env${Date.now()}@example.com`;
     const testPassword = 'E2ETestPassword123!';
@@ -8,18 +10,20 @@ test.describe('Environment Management', () => {
         // Setup: Create user, login, and create project
         // Signup
         await page.goto('/signup');
-        await page.fill('input[type="email"]', testEmail);
-        await page.fill('input[type="password"]', testPassword);
-        await page.click('button[type="submit"]');
-        
-        await page.waitForURL('/dashboard/**');
-        
+        await page.waitForLoadState('networkidle');
+        await page.fill('#email', testEmail);
+        await page.fill('#password', testPassword);
+        await page.click('button:has-text("Create account")');
+
+        await page.waitForURL(/\/dashboard/, { timeout: 10000 });
+
         // Create a project
         await page.goto('/dashboard/projects');
+        await page.waitForLoadState('networkidle');
         await page.click('text=New Project');
         await page.fill('input[placeholder*="project name"]', 'E2E Env Test Project');
         await page.click('text=Create Project');
-        
+
         await page.waitForTimeout(2000);
     });
 

@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.describe.configure({ mode: 'serial' });
+
 test.describe('Authentication Flow', () => {
     const testEmail = `e2e${Date.now()}@example.com`;
     const testPassword = 'E2ETestPassword123!';
@@ -17,48 +19,61 @@ test.describe('Authentication Flow', () => {
 
     test('complete signup flow', async ({ page }) => {
         // Navigate to signup
-        await page.click('text=Get started free');
+        await page.goto('/signup');
         await expect(page).toHaveURL('/signup');
 
-        // Fill signup form
-        await page.fill('input[type="email"]', testEmail);
-        await page.fill('input[type="password"]', testPassword);
-        
-        // Submit form
-        await page.click('button[type="submit"]');
+        // Wait for client-side hydration
+        await page.waitForLoadState('networkidle');
 
-        // Should redirect to dashboard
-        await page.waitForURL('/dashboard/**', { timeout: 10000 });
+        // Fill signup form using IDs
+        await page.fill('#email', testEmail);
+        await page.fill('#password', testPassword);
+
+        // Submit form using text content - wait for navigation
+        await Promise.all([
+            page.waitForNavigation({ url: /\/dashboard/, timeout: 15000 }),
+            page.click('button:has-text("Create account")')
+        ]);
+
+        // Verify we're on dashboard
+        await expect(page).toHaveURL(/\/dashboard/);
         await expect(page.locator('text=Dashboard')).toBeVisible();
     });
 
     test('complete login flow', async ({ page }) => {
         // Navigate to login
         await page.goto('/login');
-        
-        // Fill login form
-        await page.fill('input[type="email"]', testEmail);
-        await page.fill('input[type="password"]', testPassword);
-        
-        // Submit form
-        await page.click('button[type="submit"]');
 
-        // Should redirect to dashboard
-        await page.waitForURL('/dashboard/**', { timeout: 10000 });
+        // Wait for client-side hydration
+        await page.waitForLoadState('networkidle');
+
+        // Fill login form using IDs
+        await page.fill('#email', testEmail);
+        await page.fill('#password', testPassword);
+
+        // Submit form using text content - wait for navigation
+        await Promise.all([
+            page.waitForNavigation({ url: /\/dashboard/, timeout: 15000 }),
+            page.click('button:has-text("Sign in")')
+        ]);
+
+        // Verify we're on dashboard
+        await expect(page).toHaveURL(/\/dashboard/);
         await expect(page.locator('text=Dashboard')).toBeVisible();
     });
 
     test('should handle invalid login', async ({ page }) => {
         await page.goto('/login');
-        
-        await page.fill('input[type="email"]', 'wrong@example.com');
-        await page.fill('input[type="password"]', 'WrongPassword123');
-        
-        await page.click('button[type="submit"]');
+        await page.waitForLoadState('networkidle');
+
+        await page.fill('#email', 'wrong@example.com');
+        await page.fill('#password', 'WrongPassword123');
+
+        await page.click('button:has-text("Sign in")');
 
         // Should show error
-        await expect(page.locator('text=invalid')).toBeVisible({ timeout: 5000 });
-        
+        await expect(page.locator('text=Invalid email or password')).toBeVisible({ timeout: 5000 });
+
         // Should stay on login page
         await expect(page).toHaveURL('/login');
     });
@@ -72,46 +87,58 @@ test.describe('Authentication Flow', () => {
     });
 
     test('logout flow', async ({ page }) => {
-        // First login
+        // This test relies on the user created in earlier tests
+        // Ensure we're logged in first
         await page.goto('/login');
-        await page.fill('input[type="email"]', testEmail);
-        await page.fill('input[type="password"]', testPassword);
-        await page.click('button[type="submit"]');
-        
-        await page.waitForURL('/dashboard/**');
-        
-        // Find and click logout
+        await page.waitForLoadState('networkidle');
+
+        // Check if already logged in by checking current URL after navigation attempt
+        const currentUrl = page.url();
+        if (!currentUrl.includes('/dashboard')) {
+            // Not logged in, need to login
+            await page.fill('#email', testEmail);
+            await page.fill('#password', testPassword);
+
+            await Promise.all([
+                page.waitForNavigation({ url: /\/dashboard/, timeout: 15000 }),
+                page.click('button:has-text("Sign in")')
+            ]);
+        }
+
+        // Now we're on dashboard, find and click logout
         await page.click('text=Logout');
-        
-        // Should redirect to homepage or login
-        await expect(page).toHaveURL(/\/(login)?$/);
-        
-        // Try to access dashboard again
+
+        // Should redirect to logout page, login, or homepage
+        await expect(page).toHaveURL(/\/(logout|login)?$/, { timeout: 10000 });
+
+        // Try to access dashboard again (should redirect to login)
         await page.goto('/dashboard');
         await expect(page).toHaveURL('/login');
     });
 
     test('password requirements validation', async ({ page }) => {
         await page.goto('/signup');
-        
+        await page.waitForLoadState('networkidle');
+
         // Try short password
-        await page.fill('input[type="email"]', 'test@example.com');
-        await page.fill('input[type="password"]', '123');
-        await page.click('button[type="submit"]');
-        
-        // Should show validation error
-        await expect(page.locator('text=invalid').or(page.locator('text=minimum'))).toBeVisible();
+        await page.fill('#email', 'test@example.com');
+        await page.fill('#password', '123');
+
+        // Button should be disabled due to validation
+        const button = page.locator('button:has-text("Create account")');
+        await expect(button).toBeDisabled();
     });
 
     test('email validation', async ({ page }) => {
         await page.goto('/signup');
-        
+        await page.waitForLoadState('networkidle');
+
         // Try invalid email
-        await page.fill('input[type="email"]', 'notanemail');
-        await page.fill('input[type="password"]', 'ValidPassword123!');
-        
+        await page.fill('#email', 'notanemail');
+        await page.fill('#password', 'ValidPassword123!');
+
         // Browser validation should prevent submission
-        const emailInput = page.locator('input[type="email"]');
+        const emailInput = page.locator('#email');
         const isValid = await emailInput.evaluate((el: HTMLInputElement) => el.validity.valid);
         expect(isValid).toBe(false);
     });
