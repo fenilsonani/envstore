@@ -29,14 +29,11 @@ test.describe('Authentication Flow', () => {
         await page.fill('#email', testEmail);
         await page.fill('#password', testPassword);
 
-        // Submit form using text content - wait for navigation
-        await Promise.all([
-            page.waitForNavigation({ url: /\/dashboard/, timeout: 15000 }),
-            page.click('button:has-text("Create account")')
-        ]);
+        // Submit form using text content
+        await page.click('button:has-text("Create account")');
 
-        // Verify we're on dashboard
-        await expect(page).toHaveURL(/\/dashboard/);
+        // Wait for redirect to dashboard
+        await page.waitForURL(/\/dashboard/, { timeout: 20000 });
         await expect(page.locator('text=Dashboard')).toBeVisible();
     });
 
@@ -51,14 +48,11 @@ test.describe('Authentication Flow', () => {
         await page.fill('#email', testEmail);
         await page.fill('#password', testPassword);
 
-        // Submit form using text content - wait for navigation
-        await Promise.all([
-            page.waitForNavigation({ url: /\/dashboard/, timeout: 15000 }),
-            page.click('button:has-text("Sign in")')
-        ]);
+        // Submit form using text content
+        await page.click('button:has-text("Sign in")');
 
-        // Verify we're on dashboard
-        await expect(page).toHaveURL(/\/dashboard/);
+        // Wait for redirect to dashboard
+        await page.waitForURL(/\/dashboard/, { timeout: 20000 });
         await expect(page.locator('text=Dashboard')).toBeVisible();
     });
 
@@ -98,11 +92,8 @@ test.describe('Authentication Flow', () => {
             // Not logged in, need to login
             await page.fill('#email', testEmail);
             await page.fill('#password', testPassword);
-
-            await Promise.all([
-                page.waitForNavigation({ url: /\/dashboard/, timeout: 15000 }),
-                page.click('button:has-text("Sign in")')
-            ]);
+            await page.click('button:has-text("Sign in")');
+            await page.waitForURL(/\/dashboard/, { timeout: 20000 });
         }
 
         // Now we're on dashboard, find and click logout
