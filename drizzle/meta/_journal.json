@@ -1,13 +1,20 @@
 {
-    "version": "7",
-    "dialect": "sqlite",
-    "entries": [
-        {
-            "idx": 0,
-            "version": "6",
-            "when": 1755506224284,
-            "tag": "0000_elite_micromacro",
-            "breakpoints": true
-        }
-    ]
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1755506224284,
+      "tag": "0000_elite_micromacro",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1763009077061,
+      "tag": "0001_dusty_purifiers",
+      "breakpoints": true
+    }
+  ]
 }
