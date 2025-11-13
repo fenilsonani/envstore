@@ -17,7 +17,7 @@ import {
     SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Home, FolderOpen, Server, Key, Settings, LogOut } from 'lucide-react';
+import { Home, FolderOpen, Server, Key, Settings, LogOut, Users } from 'lucide-react';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -27,6 +27,7 @@ const navigationItems = [
     { name: 'Overview', href: '/dashboard', icon: Home },
     { name: 'Projects', href: '/dashboard/projects', icon: FolderOpen },
     { name: 'Environments', href: '/dashboard/environments', icon: Server },
+    { name: 'Team', href: '/dashboard/team', icon: Users },
     { name: 'API Keys', href: '/dashboard/api-keys', icon: Key },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
