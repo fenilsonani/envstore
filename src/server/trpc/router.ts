@@ -11,7 +11,7 @@ import {
     organizationInvitations,
     auditLogs,
 } from '../db/schema';
-import { eq, and, desc, sql, isNull, or } from 'drizzle-orm';
+import { eq, and, desc, sql, isNull } from 'drizzle-orm';
 import { encryptString, decryptString } from '../crypto';
 import { randomUUID } from 'node:crypto';
 import crypto from 'node:crypto';
@@ -96,7 +96,7 @@ async function logAudit(
         action: string;
         resourceType: string;
         resourceId?: string;
-        metadata?: any;
+        metadata?: Record<string, unknown>;
     }
 ) {
     await db.insert(auditLogs).values({
